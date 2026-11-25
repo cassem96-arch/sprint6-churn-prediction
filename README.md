@@ -1,9 +1,9 @@
-# Customer Churn Prediction Analysis
+# Customer Churn Prediction Project
 
 **TripleTen Sprint 6 Project — Introduction to Machine Learning using Python**
 
 ## 1. Project Overview
-An e-commerce company has experienced rising customer churn and wants to determine whether machine learning models can proactively identify customers likely to leave the platform. In this project, we explore customer demographic, satisfaction, and behavioral data, build and compare **Logistic Regression** and **Decision Tree** classification models, evaluate their performance on a held-out test set, and translate the findings into actionable recommendations for the customer retention team.
+An e-commerce company wants to identify customers who are likely to churn so the retention team can intervene proactively. In this project, we explore customer behavior and satisfaction data, preprocess missing values and categorical features, train and compare **Logistic Regression** and **Decision Tree** classification models, evaluate generalization and classification metrics, and translate the findings into actionable business recommendations.
 
 ---
 
@@ -18,7 +18,7 @@ An e-commerce company has experienced rising customer churn and wants to determi
 
 | Column | Description |
 |---|---|
-| `CustomerID` | Unique customer identifier (dropped prior to modeling) |
+| `CustomerID` | Unique customer identifier (excluded from features) |
 | `Churn` | Target variable (`1` = Churned, `0` = Active) |
 | `Tenure` | Months the customer has been with the company |
 | `Gender` | Customer gender (`Female`, `Male`) |
@@ -32,72 +32,84 @@ An e-commerce company has experienced rising customer churn and wants to determi
 ---
 
 ## 3. Workflow & Methodology
-All steps are implemented and executed in [`churn_prediction.ipynb`](./churn_prediction.ipynb):
+All steps follow the project template and are executed in [`churn_prediction.ipynb`](./churn_prediction.ipynb):
 
-1. **Import Libraries:** `pandas`, `numpy`, `matplotlib`, `seaborn`, and `scikit-learn`.
-2. **Data Exploration:** Inspected shape, types, summary statistics, missing values, duplicates, target distribution, churn-rate breakdowns, numerical distributions, and feature correlations.
-3. **Data Preprocessing:** Dropped `CustomerID`; one-hot encoded `Gender` and `MaritalStatus` with `drop_first=True` (yielding 9 features); verified right-skewness (`Tenure` skew 1.14, `OrderCount` skew 2.33, `DaySinceLastOrder` skew 1.82) to justify **median imputation**.
-4. **Train-Test Split:** 80/20 stratified split (`stratify=y`, `random_state=42`) producing **1,516 training rows** (50.00% churn) and **380 test rows** (50.00% churn). Fitted both **median imputation** (`Tenure = 4.0`, `OrderCount = 2.0`, `DaySinceLastOrder = 3.0`) and **`StandardScaler`** (on `Tenure`, `SatisfactionScore`, `NumberOfAddress`, `OrderCount`, `DaySinceLastOrder`) strictly on the training set to avoid data leakage.
-5. **Model Training:** Trained `LogisticRegression(random_state=42, max_iter=1000)` and compared `DecisionTreeClassifier(random_state=42)` across `max_depth` values (`2, 3, 4, 5, 6, None`), selecting `max_depth=4` to prevent overfitting (`max_depth=None` reached 99.08% train accuracy vs 86.05% test accuracy and lower ROC-AUC 0.8706).
-6. **Model Evaluation:** Evaluated Accuracy, Precision, Recall, F1-Score, ROC-AUC, classification reports, confusion matrices, ROC curves, Logistic Regression coefficients/odds ratios, and Decision Tree feature importances.
-7. **Conclusion & Recommendations:** Selected the best model and outlined business actions.
+1. **Step 0 — Import Libraries:** `pandas`, `numpy`, `matplotlib`, `seaborn`, and `scikit-learn` (`train_test_split`, `StandardScaler`, `LogisticRegression`, `DecisionTreeClassifier`, `accuracy_score`, `precision_score`, `recall_score`, `confusion_matrix`).
+2. **Task 1 — Data Exploration:** Inspected sample rows (`head()`), schema (`info()`), missing values (`isnull().sum()`), target balance (`value_counts()`), summary statistics (`describe()`), duplicate checks, and churn-rate breakdowns by `Complain`, `SatisfactionScore`, `MaritalStatus`, `Gender`, and `Tenure`.
+3. **Task 2 — Data Preprocessing:** Dropped any rows missing `Churn`, applied **median imputation** to numerical columns (`Tenure`, `SatisfactionScore`, `NumberOfAddress`, `OrderCount`, `DaySinceLastOrder`), applied one-hot encoding (`pd.get_dummies(..., drop_first=True)`) to `Gender` and `MaritalStatus`, and defined `X` (`(1896, 9)`, excluding `CustomerID` and `Churn`) and `y` (`(1896,)`).
+4. **Task 3 — Train-Test Split & Feature Scaling:** Performed an 80/20 split (`test_size=0.20, random_state=42`) producing **1,516 training rows** and **380 test rows** (200 churned, 180 active), then applied `StandardScaler` fit on `X_train[num_cols]` and transformed `X_test[num_cols]`.
+5. **Task 4 — Train Classification Models:** Trained `LogisticRegression(max_iter=1000, random_state=42)` and tuned `DecisionTreeClassifier(random_state=42)` across `max_depth` candidates (`2, 3, 4, 5, 6, None`), selecting **`max_depth=4`** for the highest constrained Recall (`0.8450`) and controlled train–test gap (`0.0252`).
+6. **Task 5 — Model Evaluation:** Evaluated Accuracy, Precision, Recall, Confusion Matrices, and train–test overfitting checks, then compared both models on Recall and generalization.
+7. **Conclusion:** Summarized the selected model, key churn drivers, and retention strategy recommendations.
 
 ---
 
 ## 4. Key Exploratory Findings
-- **Early-Tenure Drop-off Is Massive (`r = -0.49`):** Churned customers have a median tenure of **1.0 month** (mean **3.38 months**) versus **10.0 months** (mean **11.70 months**) for active customers. Customers with `Tenure <= 1` month churned at **84.03%** (`n = 739`), compared to **23.84%** for `Tenure > 1` month (`n = 1,032`).
-- **Complaints Double Churn Risk (`r = +0.32`):** Customers who filed a complaint (`Complain = 1`) churned at **70.36%** (`n = 722`), nearly double the **37.48%** churn rate among non-complainers (`n = 1,174`).
-- **Marital Status & Gender Differences:** **Single** customers churned at **64.09%** (`n = 749`), compared with **45.26%** for Divorced (`n = 274`) and **39.40%** for Married (`n = 873`). Male customers churned at **52.36%** vs **46.40%** for Female customers.
-- **Satisfaction Score Anomaly:** Self-reported `SatisfactionScore` rose slightly with churn (**39.30%** at score 1 up to **61.97%** at score 5; `r = +0.14`), showing that satisfaction ratings alone cannot be used to rule out churn risk.
+- **Early-Tenure Drop-Off:** Churned customers have a median tenure of **1.0 month** (mean **3.38 months**) versus **10.0 months** (mean **11.70 months**) for active customers. Customers with `Tenure <= 1` month churned at **84.03%** (`n = 739`), compared to **23.84%** for `Tenure > 1` month (`n = 1,032`).
+- **Complaints Strongly Signal Churn:** Customers who filed a complaint (`Complain = 1`) churned at **70.36%** (`n = 722`), nearly double the **37.48%** churn rate among non-complainers (`n = 1,174`).
+- **Marital Status & Gender Differences:** `Single` customers churned at **64.09%** (`n = 749`), compared with **45.26%** for `Divorced` (`n = 274`) and **39.40%** for `Married` (`n = 873`). Male customers churned at **52.36%** vs. **46.40%** for Female customers.
+- **Satisfaction Score:** Self-reported `SatisfactionScore` increased slightly with churn (**39.30%** at score 1 up to **61.97%** at score 5), showing that survey ratings alone cannot rule out churn risk.
 
 ---
 
-## 5. Model Comparison (Test Set, `n = 380`)
+## 5. Decision Tree `max_depth` Experiment
 
-| Model | Train Accuracy | Test Accuracy | Precision | Recall | F1-Score | ROC-AUC | Test Confusion Matrix (`TN / FP / FN / TP`) |
-|---|---:|---:|---:|---:|---:|---:|---|
-| **Logistic Regression** | 0.8094 | **0.8263** | 0.8069 | **0.8579** | **0.8316** | **0.8786** | `151 / 39 / 27 / 163` |
-| **Decision Tree (`max_depth=4`)** | 0.8120 | 0.8237 | **0.8090** | 0.8474 | 0.8278 | 0.8762 | `152 / 38 / 29 / 161` |
+| `max_depth` | Train Accuracy | Test Accuracy | Train–Test Gap | Precision | Recall |
+|---|---:|---:|---:|---:|---:|
+| `2` | 0.7658 | 0.7632 | +0.0027 | 0.8438 | 0.6750 |
+| `3` | 0.8015 | 0.8132 | -0.0117 | 0.8377 | 0.8000 |
+| **`4` (Selected)** | **0.8226** | **0.7974** | **+0.0252** | **0.7860** | **0.8450** |
+| `5` | 0.8417 | 0.8026 | +0.0391 | 0.8453 | 0.7650 |
+| `6` | 0.8542 | 0.8263 | +0.0279 | 0.8454 | 0.8200 |
+| `None` | 0.9901 | 0.8947 | +0.0954 | 0.8670 | 0.9450 |
+
+`max_depth=4` achieves the highest Recall (**0.8450**) among all constrained depths while keeping the train–test gap moderate (`0.0252`), whereas `max_depth=None` severely overfits (`0.0954` gap, `> 0.05`).
+
+---
+
+## 6. Model Comparison (Test Set, `n = 380`)
+
+| Model | Train Accuracy | Test Accuracy | Train–Test Gap | Precision | Recall | Test Confusion Matrix (`[[TN, FP], [FN, TP]]`) |
+|---|---:|---:|---:|---:|---:|---|
+| **Logistic Regression** | 0.8140 | **0.8053** | **0.0087** (Small) | **0.7944** | **0.8500** | `[[136, 44], [30, 170]]` |
+| **Decision Tree (`max_depth=4`)** | 0.8226 | 0.7974 | 0.0252 (Moderate) | 0.7860 | 0.8450 | `[[134, 46], [31, 169]]` |
 
 ### Top Churn Drivers Across Both Models
 - **Logistic Regression (Standardized Coefficients / Odds Ratios):**
-  - `Complain`: **+1.7309** (Odds Ratio: **5.65×**)
-  - `Tenure`: **-1.5777** (Odds Ratio: **0.21×** per SD increase)
-  - `MaritalStatus_Single`: **+0.5981** (Odds Ratio: **1.82×**)
-  - `NumberOfAddress`: **+0.5027** (Odds Ratio: **1.65×**)
-  - `OrderCount`: **+0.4726** (Odds Ratio: **1.60×**)
+  - `Complain`: **+1.6705** (Odds Ratio: **5.31×**)
+  - `Tenure`: **-1.5835** (Odds Ratio: **0.21×** per SD increase)
+  - `NumberOfAddress`: **+0.4988** (Odds Ratio: **1.65×**)
+  - `MaritalStatus_Married`: **-0.4677** (Odds Ratio: **0.63×**)
+  - `OrderCount`: **+0.4499** (Odds Ratio: **1.57×**)
+  - `MaritalStatus_Single`: **+0.4327** (Odds Ratio: **1.54×**)
+  - `DaySinceLastOrder`: **-0.4256** (Odds Ratio: **0.65×**)
 - **Decision Tree (`max_depth=4`, Feature Importance):**
-  - `Tenure`: **72.29%**, `Complain`: **13.53%**, `DaySinceLastOrder`: **4.81%**, `SatisfactionScore`: **4.73%**
+  - `Tenure`: **71.90%**, `Complain`: **11.98%**, `NumberOfAddress`: **7.42%**, `DaySinceLastOrder`: **4.08%**
 
 ---
 
-## 6. Selected Model & Why
-**Logistic Regression** is selected as the recommended production model:
-1. **Strongest Performance on Retention Metrics:** It outperforms the regularized Decision Tree on **Accuracy (82.63% vs 82.37%)**, **Recall (85.79% vs 84.74%)**, **F1-Score (83.16% vs 82.78%)**, and **ROC-AUC (0.8786 vs 0.8762)**.
-2. **Higher Recall Reduces Costly Missed Churners:** In retention, a False Negative (missing a customer who leaves) loses future revenue, whereas a False Positive only incurs a low-cost outreach touchpoint. Logistic Regression catches **163 of 190** churners on the test set (missing only 27).
-3. **No Overfitting:** Test accuracy (**82.63%**) tracks closely with training accuracy (**80.94%**), confirming strong generalization.
-4. **Continuous Probability Scoring:** `predict_proba` produces smooth risk scores that allow the retention team to rank customers and tune thresholds for different campaign budgets, while the Decision Tree (`max_depth=4`) remains useful as an interpretable rule summary for stakeholders.
+## 7. Selected Model & Why
+**Logistic Regression** is selected as the best model for this project:
+- **Highest Recall (Primary Metric):** Achieves **0.8500** vs. **0.8450** for the Decision Tree, catching **170 of 200** churned customers on the test set (missing 30 vs. 31).
+- **Higher Accuracy & Precision (Lower False-Positive Cost):** Outperforms the Decision Tree on Accuracy (**0.8053 vs. 0.7974**) and Precision (**0.7944 vs. 0.7860**), generating fewer false alarms (**44 vs. 46** False Positives).
+- **Stronger Generalization:** Exhibits a small train–test gap of **0.0087** (`< 0.02`), compared with **0.0252** (`0.02–0.05`, moderate) for the Decision Tree.
 
 ---
 
-## 7. Business Recommendations
-1. **Prioritize First-30-Day Onboarding (`Tenure <= 1` month):** With **84.03%** churn among customers at `Tenure <= 1` month, introduce automated onboarding sequences, proactive support check-ins, and a second-order incentive within the first 14–21 days to carry new buyers past the month-1 drop-off.
-2. **Treat Complaints as Immediate Retention Escalations (`Complain = 1`):** Because complaints carry a **70.36%** churn rate (**5.65×** churn odds), route every complaint into a fast-track SLA with post-resolution follow-up credits or outreach.
-3. **Segment Campaigns for Single Shoppers (`MaritalStatus = Single`):** Target the **64.09%** churn segment with personalized promotions and multi-item convenience bundles.
-4. **Use Model Probability Tiers Instead of Survey Scores Alone:** Score active customers weekly with the Logistic Regression model — reserve high-touch retention offers for High Risk (`p >= 0.70`) and automated lifecycle emails for Medium Risk (`0.40 <= p < 0.70`) — rather than relying on `SatisfactionScore` alone.
+## 8. Business Recommendations
+1. **Prioritize First-30-Day Onboarding (`Tenure <= 1` month):** With **84.03%** churn in the first month, launch automated onboarding sequences, proactive support check-ins, and a second-order incentive within days 14–21.
+2. **Escalate Complaints Immediately (`Complain = 1`):** Route every complaint (**70.36%** churn rate, **5.31×** churn odds) into a fast-track resolution SLA with post-resolution follow-up credits.
+3. **Target Single Shoppers (`MaritalStatus = Single`):** Engage the **64.09%** churn segment with personalized promotions and multi-item bundles.
+4. **Score Active Accounts Weekly with Model Probabilities:** Use Logistic Regression risk probabilities rather than satisfaction survey scores alone to focus high-touch retention offers on the highest-risk accounts.
 
 ---
 
-## 8. How to Run
+## 9. How to Run
 1. Install Python 3.10+ and required libraries:
    ```bash
    pip install pandas numpy matplotlib seaborn scikit-learn jupyter nbconvert
    ```
-2. Execute the notebook from the terminal (the notebook loads `ecommerce_churn.csv` directly from its public URL):
+2. Execute the notebook from the terminal:
    ```bash
    jupyter nbconvert --to notebook --execute --inplace churn_prediction.ipynb
-   ```
-   Or open it interactively with:
-   ```bash
-   jupyter notebook churn_prediction.ipynb
    ```
